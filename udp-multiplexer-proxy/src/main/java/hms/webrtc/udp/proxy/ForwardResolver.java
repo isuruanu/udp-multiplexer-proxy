@@ -16,7 +16,6 @@ public class ForwardResolver {
         packet.content().readBytes(content);
         rtpPacket.getBuffer().put(content);
         packet.content().resetReaderIndex();
-        System.out.println("Synchronized source - " + rtpPacket.getSyncSource());
         return String.valueOf(rtpPacket.getSyncSource());
     }
 }

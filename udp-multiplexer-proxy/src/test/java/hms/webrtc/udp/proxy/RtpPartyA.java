@@ -61,7 +61,7 @@ public final class RtpPartyA {
                     Unpooled.copiedBuffer(rtpDataByeArray),
                     new InetSocketAddress("127.0.0.1", PORT))).sync();
 
-            if (!ch.closeFuture().await(50000)) {
+            if (!ch.closeFuture().await(5000)) {
                 Assert.fail("Rtp communication timeout");
             } else {
 

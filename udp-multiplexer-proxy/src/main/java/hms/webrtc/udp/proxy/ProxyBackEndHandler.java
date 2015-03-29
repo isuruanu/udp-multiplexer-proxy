@@ -5,18 +5,14 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.util.CharsetUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
-/**
- * Created by isuru on 3/27/15.
- */
 public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
-    private ProxyContextCache cache;
-
-    public ProxyBackEndHandler(ProxyContextCache cache) {
-
-        this.cache = cache;
-    }
+    @Autowired
+    @Qualifier("proxyContextCache")
+    private ProxyContextCache proxyContextCache;
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
@@ -27,12 +23,9 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-        System.out.println("3. Receive data from backend " + msg.content().toString(CharsetUtil.UTF_8));
-        Optional<ProxyContext> proxyContextOptional = cache.get(ForwardResolver.getKeyForEndpoint(msg));
+        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent()) {
             ProxyContext proxyContext = proxyContextOptional.get();
-            System.out.println(proxyContext.getInboundChannel());
-            System.out.println(proxyContext.getSender());
             msg.content().retain();
             proxyContext.getInboundChannel().writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(msg.content()), proxyContext.getSender()));
         }

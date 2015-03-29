@@ -23,13 +23,13 @@ public class Proxy {
             bootstrap.
                 group(eventExecutors).
                 channel(NioDatagramChannel.class).
-                handler(new ProxyFrontEndHandler(proxyContextCache));
+                handler(new ProxyFrontEndHandler());
 
         bootstrap.bind(40000).addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if(future.isSuccess()) {
-                    System.out.println("Proxy initialization is success...");
+                    //TODO on success
                 }
             }
         }).sync().channel().closeFuture().addListener(new ChannelFutureListener() {

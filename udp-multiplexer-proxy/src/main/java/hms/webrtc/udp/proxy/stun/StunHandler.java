@@ -17,7 +17,6 @@ import java.net.InetSocketAddress;
 public class StunHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) {
-        System.out.println("Recieved msg " + msg.sender());
         msg.content().retain();
         int readableBytes = msg.content().readableBytes();
         byte[] bytes = new byte[readableBytes];
@@ -39,9 +38,6 @@ public class StunHandler extends SimpleChannelInboundHandler<DatagramPacket> {
             }
             ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(stunResponseBytes), msg.sender()));
         }
-
-        System.out.println("Receive a stun request ? " + StunMessage.isRequestType(stunMessage.getMessageType()));
-
     }
 
     @Override

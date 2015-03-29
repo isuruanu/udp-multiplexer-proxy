@@ -6,6 +6,8 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.net.InetSocketAddress;
 
@@ -14,37 +16,34 @@ import java.net.InetSocketAddress;
  */
 public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
-    private final ProxyContextCache proxyContextCache;
+    @Autowired
+    @Qualifier("proxyContextCache")
+    private ProxyContextCache proxyContextCache;
 
-    public ProxyFrontEndHandler(ProxyContextCache proxyContextCache) {
-        this.proxyContextCache = proxyContextCache;
-    }
+    @Autowired
+    @Qualifier("proxyBackEndHandler")
+    private ChannelHandler proxyBackEndHandler;
 
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final DatagramPacket msg) throws Exception {
 
         if(!proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg)).isPresent()) {
-            System.out.println("1. Adding to the proxy cache ...");
             final Channel inboundChannel = ctx.channel();
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.
                     group(inboundChannel.eventLoop()).
                     channel(NioDatagramChannel.class).
-                    handler(new ProxyBackEndHandler(proxyContextCache));
+                    handler(proxyBackEndHandler);
 
             bootstrap.bind(0).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if(future.isSuccess()) {
-                        System.out.println("Putting new context to the cache");
                         proxyContextCache.put(ForwardResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
                     }
                 }
             });
         }
-
-        
-        System.out.println("2. Read inbound data = " + msg);
 
         final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
@@ -53,10 +52,7 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (!future.isSuccess()) {
-                        System.out.println("Operation was not success");
                         proxyContextOptional.get().getOutBindChannel().close();
-                    } else {
-                        System.out.println("Operation was success");
                     }
                 }
             });
