@@ -1,0 +1,12 @@
+<test name="Rtp Packets test">
+    <groups>
+        <run>
+            <include name="check_rtp_flow"/>
+        </run>
+    </groups>
+
+    <classes>
+        <class name="hms.webrtc.udp.proxy.RtpPartyB"/>
+    </classes>
+</test>
+

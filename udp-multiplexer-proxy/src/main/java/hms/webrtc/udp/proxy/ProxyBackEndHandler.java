@@ -28,7 +28,7 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
         System.out.println("3. Receive data from backend " + msg.content().toString(CharsetUtil.UTF_8));
-        Optional<ProxyContext> proxyContextOptional = cache.get(ProxyForwardResolver.getKeyForEndpoint(msg));
+        Optional<ProxyContext> proxyContextOptional = cache.get(ForwardResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent()) {
             ProxyContext proxyContext = proxyContextOptional.get();
             System.out.println(proxyContext.getInboundChannel());
