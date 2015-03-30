@@ -4,10 +4,10 @@ import com.google.common.base.Optional;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.DatagramPacket;
-import io.netty.util.CharsetUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+@ChannelHandler.Sharable
 public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
     @Autowired
@@ -23,7 +23,7 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg));
+        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent()) {
             ProxyContext proxyContext = proxyContextOptional.get();
             msg.content().retain();

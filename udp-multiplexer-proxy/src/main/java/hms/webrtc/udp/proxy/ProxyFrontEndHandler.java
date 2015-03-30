@@ -14,6 +14,7 @@ import java.net.InetSocketAddress;
 /**
  * Created by isuru on 3/27/15.
  */
+@ChannelHandler.Sharable
 public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
     @Autowired
@@ -27,7 +28,7 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final DatagramPacket msg) throws Exception {
 
-        if(!proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg)).isPresent()) {
+        if(!proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg)).isPresent()) {
             final Channel inboundChannel = ctx.channel();
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.
@@ -39,13 +40,13 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if(future.isSuccess()) {
-                        proxyContextCache.put(ForwardResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
+                        proxyContextCache.put(ProxyForwardResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
                     }
                 }
             });
         }
 
-        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ForwardResolver.getKeyForEndpoint(msg));
+        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
             msg.content().retain();
             proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), new InetSocketAddress("127.0.0.1", 40002))).addListener(new ChannelFutureListener() {

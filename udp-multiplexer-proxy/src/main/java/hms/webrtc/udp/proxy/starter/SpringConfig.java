@@ -44,6 +44,11 @@ public class SpringConfig {
         return new NioEventLoopGroup(defaultNioWorkerThreadCount);
     }
 
+    @Bean(name = "rtcpNioEventLoopGroup")
+    public NioEventLoopGroup rtcpNioEventLoopGroup(){
+        return new NioEventLoopGroup(defaultNioWorkerThreadCount);
+    }
+
     @Bean(name = "proxyContextCache")
     public ProxyContextCache proxyContextCache() {
         return new ProxyContextCache<String, ProxyContext>(new RemovalListener<String, ProxyContext>() {
@@ -78,6 +83,14 @@ public class SpringConfig {
     public Bootstrap rtpBootStrap(){
         return new Bootstrap().
                 group(rtpNioEventLoopGroup()).
+                channel(NioDatagramChannel.class).
+                handler(proxyFrontEndHandler());
+    }
+
+    @Bean(name = "rtcpBootStrap")
+    public Bootstrap rtcpBootStrap(){
+        return new Bootstrap().
+                group(rtcpNioEventLoopGroup()).
                 channel(NioDatagramChannel.class).
                 handler(proxyFrontEndHandler());
     }

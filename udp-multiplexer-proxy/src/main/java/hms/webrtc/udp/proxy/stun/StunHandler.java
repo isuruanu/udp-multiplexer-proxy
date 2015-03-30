@@ -1,6 +1,7 @@
 package hms.webrtc.udp.proxy.stun;
 
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.DatagramPacket;
@@ -14,6 +15,7 @@ import java.net.InetSocketAddress;
 /**
  * Created by isuru on 3/29/15.
  */
+@ChannelHandler.Sharable
 public class StunHandler extends SimpleChannelInboundHandler<DatagramPacket> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) {

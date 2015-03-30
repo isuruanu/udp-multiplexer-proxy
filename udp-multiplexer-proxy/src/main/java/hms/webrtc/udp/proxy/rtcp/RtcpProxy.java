@@ -1,4 +1,4 @@
-package hms.webrtc.udp.proxy.rtp;
+package hms.webrtc.udp.proxy.rtcp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -14,21 +14,21 @@ import java.net.InetSocketAddress;
  * Created by isuru on 3/29/15.
  */
 @Component
-public class RtpProxy {
+public class RtcpProxy {
 
     @Autowired
-    @Qualifier("rtpBootStrap")
-    Bootstrap rtpBootStrap;
+    @Qualifier("rtcpBootStrap")
+    Bootstrap rtcpBootStrap;
 
     @Autowired
-    @Qualifier("rtpBindAddress")
-    InetSocketAddress rtpBindAddress;
+    @Qualifier("rtcpBindAddress")
+    InetSocketAddress rtcpBindAddress;
 
     private Channel channel;
 
     @PostConstruct
     public void start() throws InterruptedException {
-        channel = rtpBootStrap.bind(rtpBindAddress).sync().channel();
+        channel = rtcpBootStrap.bind(rtcpBindAddress).sync().channel();
     }
 
     @PreDestroy

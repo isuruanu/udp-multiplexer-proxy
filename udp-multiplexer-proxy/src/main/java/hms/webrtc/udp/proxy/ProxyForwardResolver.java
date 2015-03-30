@@ -6,7 +6,7 @@ import org.mobicents.media.server.impl.rtp.RtpPacket;
 /**
  * Created by isuru on 3/27/15.
  */
-public class ForwardResolver {
+public class ProxyForwardResolver {
 
     public static String getKeyForEndpoint(DatagramPacket packet) {
         packet.content().retain();

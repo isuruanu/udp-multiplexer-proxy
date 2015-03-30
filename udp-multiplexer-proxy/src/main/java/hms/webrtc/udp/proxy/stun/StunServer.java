@@ -1,6 +1,5 @@
 package hms.webrtc.udp.proxy.stun;
 
-import hms.webrtc.udp.proxy.ProxyFrontEndHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
