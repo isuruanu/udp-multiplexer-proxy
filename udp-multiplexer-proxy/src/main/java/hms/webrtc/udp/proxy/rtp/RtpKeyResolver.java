@@ -1,21 +1,27 @@
-package hms.webrtc.udp.proxy;
+package hms.webrtc.udp.proxy.rtp;
 
+import hms.webrtc.udp.proxy.ProxyKeyResolver;
 import io.netty.channel.socket.DatagramPacket;
 import org.mobicents.media.server.impl.rtp.RtpPacket;
 
 /**
- * Created by isuru on 3/27/15.
+ * Created by isuru on 3/30/15.
  */
-public class ProxyForwardResolver {
+public class RtpKeyResolver implements ProxyKeyResolver {
 
-    public static String getKeyForEndpoint(DatagramPacket packet) {
+    @Override
+    public String getKeyForEndpoint(DatagramPacket packet) {
         packet.content().retain();
+
         int readableBytes = packet.content().readableBytes();
-        RtpPacket rtpPacket = new RtpPacket(readableBytes, true);
         byte[] content = new byte[readableBytes];
         packet.content().readBytes(content);
+
+        RtpPacket rtpPacket = new RtpPacket(readableBytes, true);
         rtpPacket.getBuffer().put(content);
+
         packet.content().resetReaderIndex();
-        return String.valueOf(rtpPacket.getSyncSource());
+
+        return "rtp:"+String.valueOf(rtpPacket.getSyncSource());
     }
 }

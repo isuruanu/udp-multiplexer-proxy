@@ -7,6 +7,8 @@ import hms.webrtc.udp.proxy.ProxyContext;
 import hms.webrtc.udp.proxy.ProxyContextCache;
 import hms.webrtc.udp.proxy.ProxyFrontEndHandler;
 import hms.webrtc.udp.proxy.remote.ProxyRemoteControlHandler;
+import hms.webrtc.udp.proxy.rtcp.RtcpKeyResolver;
+import hms.webrtc.udp.proxy.rtp.RtpKeyResolver;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -81,14 +83,24 @@ public class SpringConfig {
         return new InetSocketAddress(defaultBindHostInterfaceIp, proxyRemoteControlPort);
     }
 
-    @Bean(name = "proxyFrontEndHandler")
-    public ChannelHandler proxyFrontEndHandler() {
-        return new ProxyFrontEndHandler();
+    @Bean(name = "rtpFrontEndHandler")
+    public ChannelHandler rtpFrontEndHandler() {
+        return new ProxyFrontEndHandler(rtpBackEndHandler(), rtpKeyResolver());
     }
 
-    @Bean(name = "proxyBackEndHandler")
-    public ChannelHandler proxyBackChannelHandler() {
-        return new ProxyBackEndHandler();
+    @Bean(name = "rtpBackEndHandler")
+    public ChannelHandler rtpBackEndHandler() {
+        return new ProxyBackEndHandler(rtpKeyResolver());
+    }
+
+    @Bean(name = "rtcpFrontEndHandler")
+    public ChannelHandler rtcpFrontEndHandler() {
+        return new ProxyFrontEndHandler(rtcpBackEndHandler(), rtcpKeyResolver());
+    }
+
+    @Bean(name = "rtcpBackEndHandler")
+    public ChannelHandler rtcpBackEndHandler() {
+        return new ProxyBackEndHandler(rtcpKeyResolver());
     }
 
     @Bean(name = "proxyRemoteControlHandler")
@@ -101,7 +113,7 @@ public class SpringConfig {
         return new Bootstrap().
                 group(rtpNioEventLoopGroup()).
                 channel(NioDatagramChannel.class).
-                handler(proxyFrontEndHandler());
+                handler(rtpFrontEndHandler());
     }
 
     @Bean(name = "remoteControlBootStrap")
@@ -117,7 +129,17 @@ public class SpringConfig {
         return new Bootstrap().
                 group(rtcpNioEventLoopGroup()).
                 channel(NioDatagramChannel.class).
-                handler(proxyFrontEndHandler());
+                handler(rtcpFrontEndHandler());
+    }
+
+    @Bean(name = "rtcpKeyResolver")
+    public RtcpKeyResolver rtcpKeyResolver(){
+        return new RtcpKeyResolver();
+    }
+
+    @Bean(name = "rtpKeyResolver")
+    public RtpKeyResolver rtpKeyResolver(){
+        return new RtpKeyResolver();
     }
 
     @Bean

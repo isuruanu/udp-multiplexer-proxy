@@ -14,6 +14,12 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
     @Qualifier("proxyContextCache")
     private ProxyContextCache proxyContextCache;
 
+    private ProxyKeyResolver proxyKeyResolver;
+
+    public ProxyBackEndHandler(ProxyKeyResolver proxyKeyResolver) {
+        this.proxyKeyResolver = proxyKeyResolver;
+    }
+
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (ctx.channel().isActive()) {
@@ -23,7 +29,7 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg));
+        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent()) {
             ProxyContext proxyContext = proxyContextOptional.get();
             msg.content().retain();

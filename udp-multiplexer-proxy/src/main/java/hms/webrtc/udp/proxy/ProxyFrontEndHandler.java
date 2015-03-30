@@ -21,14 +21,18 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     @Qualifier("proxyContextCache")
     private ProxyContextCache proxyContextCache;
 
-    @Autowired
-    @Qualifier("proxyBackEndHandler")
     private ChannelHandler proxyBackEndHandler;
+    private ProxyKeyResolver proxyKeyResolver;
+
+    public ProxyFrontEndHandler(ChannelHandler proxyBackEndHandler, ProxyKeyResolver proxyKeyResolver) {
+        this.proxyBackEndHandler = proxyBackEndHandler;
+        this.proxyKeyResolver = proxyKeyResolver;
+    }
 
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final DatagramPacket msg) throws Exception {
 
-        if(!proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg)).isPresent()) {
+        if(!proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg)).isPresent()) {
             final Channel inboundChannel = ctx.channel();
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.
@@ -40,13 +44,13 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if(future.isSuccess()) {
-                        proxyContextCache.put(ProxyForwardResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
+                        proxyContextCache.put(proxyKeyResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
                     }
                 }
             });
         }
 
-        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(ProxyForwardResolver.getKeyForEndpoint(msg));
+        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg));
         if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
             msg.content().retain();
             proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), new InetSocketAddress("127.0.0.1", 40002))).addListener(new ChannelFutureListener() {
