@@ -6,6 +6,7 @@ import hms.webrtc.udp.proxy.ProxyBackEndHandler;
 import hms.webrtc.udp.proxy.ProxyContext;
 import hms.webrtc.udp.proxy.ProxyContextCache;
 import hms.webrtc.udp.proxy.ProxyFrontEndHandler;
+import hms.webrtc.udp.proxy.remote.ProxyRemoteControlHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -39,10 +40,16 @@ public class SpringConfig {
     @Value("${default.bind.host.interface.ip}")
     private String defaultBindHostInterfaceIp;
 
+    @Bean(name = "remoteControlNioEventLoopGroup")
+    public NioEventLoopGroup remoteControlNioEventLoopGroup(){
+        return new NioEventLoopGroup(defaultNioWorkerThreadCount);
+    }
+
     @Bean(name = "rtpNioEventLoopGroup")
     public NioEventLoopGroup rtpNioEventLoopGroup(){
         return new NioEventLoopGroup(defaultNioWorkerThreadCount);
     }
+
 
     @Bean(name = "rtcpNioEventLoopGroup")
     public NioEventLoopGroup rtcpNioEventLoopGroup(){
@@ -69,6 +76,11 @@ public class SpringConfig {
         return new InetSocketAddress(defaultBindHostInterfaceIp, rtcpInboundPort);
     }
 
+    @Bean(name = "remoteControlBindAddress")
+    public InetSocketAddress remoteControlBindAddress() {
+        return new InetSocketAddress(defaultBindHostInterfaceIp, proxyRemoteControlPort);
+    }
+
     @Bean(name = "proxyFrontEndHandler")
     public ChannelHandler proxyFrontEndHandler() {
         return new ProxyFrontEndHandler();
@@ -79,12 +91,25 @@ public class SpringConfig {
         return new ProxyBackEndHandler();
     }
 
+    @Bean(name = "proxyRemoteControlHandler")
+    public ChannelHandler proxyRemoteControlHandler() {
+        return new ProxyRemoteControlHandler();
+    }
+
     @Bean(name = "rtpBootStrap")
     public Bootstrap rtpBootStrap(){
         return new Bootstrap().
                 group(rtpNioEventLoopGroup()).
                 channel(NioDatagramChannel.class).
                 handler(proxyFrontEndHandler());
+    }
+
+    @Bean(name = "remoteControlBootStrap")
+    public Bootstrap remoteControlBootStrap(){
+        return new Bootstrap().
+                group(remoteControlNioEventLoopGroup()).
+                channel(NioDatagramChannel.class).
+                handler(proxyRemoteControlHandler());
     }
 
     @Bean(name = "rtcpBootStrap")
