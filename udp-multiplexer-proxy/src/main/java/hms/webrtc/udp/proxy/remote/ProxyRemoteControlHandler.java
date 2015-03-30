@@ -5,6 +5,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.util.CharsetUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,11 +20,18 @@ public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<Datag
 
     public static final Pattern pattern = Pattern.compile(ProxyRemoteControlHandler.remoteConfigurationPattern);
 
+    @Autowired
+    @Qualifier("remoteControlCache")
+    RemoteControlCache remoteControlCache;
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg)  {
         try {
             String configuration = msg.content().toString(CharsetUtil.UTF_8);
             RemoteConfiguration remoteConfiguration = RemoteConfiguration.buildRemoteConfiguration(configuration);
+
+            remoteControlCache.put("rtp:"+remoteConfiguration.getSsrc(), remoteConfiguration.getRtpPort());
+            remoteControlCache.put("rtcp:"+remoteConfiguration.getSsrc(), remoteConfiguration.getRtcpPort());
 
             ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer("SUCCESS", CharsetUtil.UTF_8), msg.sender()));
         } catch (Exception e) {

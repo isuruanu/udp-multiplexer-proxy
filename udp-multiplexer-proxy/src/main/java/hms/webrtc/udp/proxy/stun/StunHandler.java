@@ -27,18 +27,16 @@ public class StunHandler extends SimpleChannelInboundHandler<DatagramPacket> {
         StunMessage stunMessage = null;
         try {
             stunMessage = StunMessage.decode(bytes, (char) 0, (char) bytes.length);
-        } catch (StunException e) {
-            e.printStackTrace();
-        }
-
-        if(stunMessage instanceof StunRequest) {
-            byte[] stunResponseBytes = new byte[0];
-            try {
-                stunResponseBytes = StunRequestProcessor.processRequest((StunRequest) stunMessage, (InetSocketAddress) ctx.channel().localAddress(), msg.sender());
-            } catch (IOException e) {
-                e.printStackTrace();
+            if(stunMessage instanceof StunRequest) {
+                byte[] stunResponseBytes = new byte[0];
+                try {
+                    stunResponseBytes = StunRequestProcessor.processRequest((StunRequest) stunMessage, (InetSocketAddress) ctx.channel().localAddress(), msg.sender());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(stunResponseBytes), msg.sender()));
             }
-            ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(stunResponseBytes), msg.sender()));
+        } catch (StunException e) {
         }
     }
 

@@ -7,6 +7,7 @@ import hms.webrtc.udp.proxy.ProxyContext;
 import hms.webrtc.udp.proxy.ProxyContextCache;
 import hms.webrtc.udp.proxy.ProxyFrontEndHandler;
 import hms.webrtc.udp.proxy.remote.ProxyRemoteControlHandler;
+import hms.webrtc.udp.proxy.remote.RemoteControlCache;
 import hms.webrtc.udp.proxy.rtcp.RtcpKeyResolver;
 import hms.webrtc.udp.proxy.rtp.RtpKeyResolver;
 import io.netty.bootstrap.Bootstrap;
@@ -140,6 +141,11 @@ public class SpringConfig {
     @Bean(name = "rtpKeyResolver")
     public RtpKeyResolver rtpKeyResolver(){
         return new RtpKeyResolver();
+    }
+
+    @Bean(name = "remoteControlCache")
+    public RemoteControlCache remoteControlCache() {
+        return new RemoteControlCache();
     }
 
     @Bean

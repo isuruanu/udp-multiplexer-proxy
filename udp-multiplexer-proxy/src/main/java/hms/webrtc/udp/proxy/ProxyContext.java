@@ -11,12 +11,15 @@ public class ProxyContext {
 
     private final Channel outBindChannel;
 
+    private final InetSocketAddress receiver;
+
     private final InetSocketAddress sender;
 
     private final Channel inboundChannel;
 
-    public ProxyContext(Channel outBindChannel, InetSocketAddress sender, Channel inboundChannel) {
+    public ProxyContext(Channel outBindChannel, InetSocketAddress receiver, InetSocketAddress sender, Channel inboundChannel) {
         this.outBindChannel = outBindChannel;
+        this.receiver = receiver;
         this.sender = sender;
         this.inboundChannel = inboundChannel;
     }
@@ -31,5 +34,9 @@ public class ProxyContext {
 
     public Channel getInboundChannel() {
         return inboundChannel;
+    }
+
+    public InetSocketAddress getReceiver() {
+        return receiver;
     }
 }

@@ -1,14 +1,21 @@
 package hms.webrtc.udp.proxy;
 
 import com.google.common.base.Optional;
+import hms.webrtc.udp.proxy.remote.RemoteControlCache;
+import hms.webrtc.udp.proxy.stun.StunRequestProcessor;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import org.mobicents.media.io.stun.StunException;
+import org.mobicents.media.io.stun.messages.StunMessage;
+import org.mobicents.media.io.stun.messages.StunRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 
 /**
@@ -21,8 +28,16 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     @Qualifier("proxyContextCache")
     private ProxyContextCache proxyContextCache;
 
+    @Autowired
+    @Qualifier("remoteControlCache")
+    RemoteControlCache remoteControlCache;
+
     private ChannelHandler proxyBackEndHandler;
+
     private ProxyKeyResolver proxyKeyResolver;
+
+    @Value("${rtp.engine.host.ip}")
+    private String rtpEngineIpAddress;
 
     public ProxyFrontEndHandler(ChannelHandler proxyBackEndHandler, ProxyKeyResolver proxyKeyResolver) {
         this.proxyBackEndHandler = proxyBackEndHandler;
@@ -32,7 +47,33 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final DatagramPacket msg) throws Exception {
 
-        if(!proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg)).isPresent()) {
+        /* TODO: Handle stun separately*/
+        msg.content().retain();
+        int readableBytes = msg.content().readableBytes();
+        byte[] bytes = new byte[readableBytes];
+        msg.content().readBytes(bytes);
+
+        msg.content().resetReaderIndex();
+
+        StunMessage stunMessage = null;
+        try {
+            stunMessage = StunMessage.decode(bytes, (char) 0, (char) bytes.length);
+            if(stunMessage instanceof StunRequest) {
+                byte[] stunResponseBytes = new byte[0];
+                try {
+                    stunResponseBytes = StunRequestProcessor.processRequest((StunRequest) stunMessage, (InetSocketAddress) ctx.channel().localAddress(), msg.sender());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(stunResponseBytes), msg.sender()));
+                return;
+            }
+        } catch (StunException e) {
+        }
+
+        final String keyForEndpoint = proxyKeyResolver.getKeyForEndpoint(msg);
+
+        if(!proxyContextCache.get(keyForEndpoint).isPresent()) {
             final Channel inboundChannel = ctx.channel();
             Bootstrap bootstrap = new Bootstrap();
             bootstrap.
@@ -44,23 +85,24 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if(future.isSuccess()) {
-                        proxyContextCache.put(proxyKeyResolver.getKeyForEndpoint(msg), new ProxyContext(future.channel(), msg.sender(), ctx.channel()));
+                        proxyContextCache.put(keyForEndpoint, new ProxyContext(future.channel(), new InetSocketAddress(rtpEngineIpAddress, remoteControlCache.get(keyForEndpoint)), msg.sender(), ctx.channel()));
                     }
                 }
             });
         }
 
-        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg));
+        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(keyForEndpoint);
         if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
             msg.content().retain();
-            proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), new InetSocketAddress("127.0.0.1", 40002))).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    if (!future.isSuccess()) {
-                        proxyContextOptional.get().getOutBindChannel().close();
-                    }
-                }
-            });
+            proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), proxyContextOptional.get().getReceiver())).
+                    addListener(new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            if (!future.isSuccess()) {
+                                proxyContextOptional.get().getOutBindChannel().close();
+                            }
+                        }
+                    });
         }
     }
 
@@ -72,12 +114,5 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         cause.printStackTrace();
-    }
-
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        if (ctx.channel().isActive()) {
-            ctx.channel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-        }
     }
 }
