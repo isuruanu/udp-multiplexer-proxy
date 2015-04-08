@@ -35,13 +35,15 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
     private ChannelHandler proxyBackEndHandler;
 
     private ProxyKeyResolver proxyKeyResolver;
+    private StunKeyResolver stunKeyResolver;
 
     @Value("${rtp.engine.host.ip}")
     private String rtpEngineIpAddress;
 
-    public ProxyFrontEndHandler(ChannelHandler proxyBackEndHandler, ProxyKeyResolver proxyKeyResolver) {
+    public ProxyFrontEndHandler(ChannelHandler proxyBackEndHandler, ProxyKeyResolver proxyKeyResolver, StunKeyResolver stunKeyResolver) {
         this.proxyBackEndHandler = proxyBackEndHandler;
         this.proxyKeyResolver = proxyKeyResolver;
+        this.stunKeyResolver = stunKeyResolver;
     }
 
     @Override
@@ -65,45 +67,65 @@ public class ProxyFrontEndHandler extends SimpleChannelInboundHandler<DatagramPa
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                String stunKey = stunKeyResolver.getKeyForEndpoint(msg);
+                System.out.println("STUN username " + stunKey);
+
+                Integer port = remoteControlCache.get(stunKey);
+
+                ctx.writeAndFlush(new DatagramPacket(msg.content(), new InetSocketAddress("172.16.1.184", port)));
                 ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(stunResponseBytes), msg.sender()));
                 return;
             }
         } catch (StunException e) {
         }
 
-        final String keyForEndpoint = proxyKeyResolver.getKeyForEndpoint(msg);
 
-        if(!proxyContextCache.get(keyForEndpoint).isPresent()) {
-            final Channel inboundChannel = ctx.channel();
-            Bootstrap bootstrap = new Bootstrap();
-            bootstrap.
-                    group(inboundChannel.eventLoop()).
-                    channel(NioDatagramChannel.class).
-                    handler(proxyBackEndHandler);
+        try {
+            final String keyForEndpoint = proxyKeyResolver.getKeyForEndpoint(msg);
+            if(!proxyContextCache.get(keyForEndpoint).isPresent()) {
+                final Channel inboundChannel = ctx.channel();
+                Bootstrap bootstrap = new Bootstrap();
+                bootstrap.
+                        group(inboundChannel.eventLoop()).
+                        channel(NioDatagramChannel.class).
+                        handler(proxyBackEndHandler);
 
-            bootstrap.bind(0).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    if(future.isSuccess()) {
-                        proxyContextCache.put(keyForEndpoint, new ProxyContext(future.channel(), new InetSocketAddress(rtpEngineIpAddress, remoteControlCache.get(keyForEndpoint)), msg.sender(), ctx.channel()));
-                    }
-                }
-            });
-        }
-
-        final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(keyForEndpoint);
-        if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
-            msg.content().retain();
-            proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), proxyContextOptional.get().getReceiver())).
-                    addListener(new ChannelFutureListener() {
-                        @Override
-                        public void operationComplete(ChannelFuture future) throws Exception {
-                            if (!future.isSuccess()) {
-                                proxyContextOptional.get().getOutBindChannel().close();
-                            }
+                bootstrap.bind(0).addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        if(future.isSuccess()) {
+                            ProxyContext value = new ProxyContext(future.channel(), new InetSocketAddress(rtpEngineIpAddress, remoteControlCache.get(keyForEndpoint)), msg.sender(), ctx.channel());
+                            proxyContextCache.put(keyForEndpoint, value);
+                            proxyContextCache.put(String.valueOf(remoteControlCache.get(keyForEndpoint)), value);
                         }
-                    });
+                    }
+                });
+            }
+
+            final Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(keyForEndpoint);
+            if(proxyContextOptional.isPresent() && proxyContextOptional.get().getOutBindChannel().isActive()) {
+                msg.content().retain();
+                proxyContextOptional.get().getOutBindChannel().writeAndFlush(new DatagramPacket(msg.content(), proxyContextOptional.get().getReceiver())).
+                        addListener(new ChannelFutureListener() {
+                            @Override
+                            public void operationComplete(ChannelFuture future) throws Exception {
+                                if (!future.isSuccess()) {
+                                    proxyContextOptional.get().getOutBindChannel().close();
+                                }
+                            }
+                        });
+            }
+            return;
+        } catch (Exception e) {
         }
+
+        try {
+            Optional<ProxyContext> optional = proxyContextCache.get(String.valueOf(msg.sender().getPort()));
+            optional.get().getInboundChannel().writeAndFlush(new DatagramPacket(msg.content(), optional.get().getSender()));
+        } catch (Exception e) {
+
+        }
+
     }
 
     @Override

@@ -29,11 +29,15 @@ public class ProxyBackEndHandler extends SimpleChannelInboundHandler<DatagramPac
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) throws Exception {
-        Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg));
-        if(proxyContextOptional.isPresent()) {
-            ProxyContext proxyContext = proxyContextOptional.get();
-            msg.content().retain();
-            proxyContext.getInboundChannel().writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(msg.content()), proxyContext.getSender()));
+        try {
+            Optional<ProxyContext> proxyContextOptional = proxyContextCache.get(proxyKeyResolver.getKeyForEndpoint(msg));
+            if(proxyContextOptional.isPresent()) {
+                ProxyContext proxyContext = proxyContextOptional.get();
+                msg.content().retain();
+                proxyContext.getInboundChannel().writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer(msg.content()), proxyContext.getSender()));
+            }
+            return;
+        } catch (Exception e) {
         }
     }
 

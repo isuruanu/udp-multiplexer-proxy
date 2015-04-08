@@ -15,6 +15,7 @@ import org.mobicents.media.io.stun.messages.attributes.general.PriorityAttribute
 import org.mobicents.media.io.stun.messages.attributes.general.UsernameAttribute;
 import org.testng.Assert;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 
 /**
@@ -28,14 +29,13 @@ public class StunClient {
     private static Channel ch;
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws UnsupportedEncodingException {
         StunRequest stunRequest = new StunRequest();
         stunRequest.setMessageType(StunMessage.BINDING_REQUEST);
         byte tranID[] = new byte[StunMessage.TRANSACTION_ID_LENGTH];
 
         UsernameAttribute usernameAttr = new UsernameAttribute();
-        usernameAttr.setUsername("remote:local".getBytes(CharsetUtil.UTF_8));
-
+        usernameAttr.setUsername("remote:local".getBytes("UTF-8"));
 
         PriorityAttribute priorityAttribute = new PriorityAttribute();
         priorityAttribute.setPriority(1);

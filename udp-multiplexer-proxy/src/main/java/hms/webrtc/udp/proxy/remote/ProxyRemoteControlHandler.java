@@ -16,13 +16,18 @@ import java.util.regex.Pattern;
  */
 public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
-    public static final String remoteConfigurationPattern = "^(?<ssrc>[0-9]*):(?<rtpPort>[0-9]*):(?<rtcpPort>[0-9]*)$";
+    public static final String remoteConfigurationPattern =
+            "^(?<ssrc>[0-9]*):(?<rtpPort>[0-9]*):(?<rtcpPort>[0-9]*):(?<stunUsername>.*:.*)$";
 
     public static final Pattern pattern = Pattern.compile(ProxyRemoteControlHandler.remoteConfigurationPattern);
 
     @Autowired
     @Qualifier("remoteControlCache")
     RemoteControlCache remoteControlCache;
+
+    @Autowired
+    @Qualifier("dtlsCache")
+    DtlsCache dtlsCache;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg)  {
@@ -31,7 +36,12 @@ public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<Datag
             RemoteConfiguration remoteConfiguration = RemoteConfiguration.buildRemoteConfiguration(configuration);
 
             remoteControlCache.put("rtp:"+remoteConfiguration.getSsrc(), remoteConfiguration.getRtpPort());
+            remoteControlCache.put("rtp:"+remoteConfiguration.getStunUsername(), remoteConfiguration.getRtpPort());
             remoteControlCache.put("rtcp:"+remoteConfiguration.getSsrc(), remoteConfiguration.getRtcpPort());
+            remoteControlCache.put("rtcp:"+remoteConfiguration.getStunUsername(), remoteConfiguration.getRtcpPort());
+
+            dtlsCache.put(remoteConfiguration.getRtpPort(), remoteConfiguration.getSsrc());
+            dtlsCache.put(remoteConfiguration.getRtcpPort(), remoteConfiguration.getSsrc());
 
             ctx.writeAndFlush(new DatagramPacket(Unpooled.copiedBuffer("SUCCESS", CharsetUtil.UTF_8), msg.sender()));
         } catch (Exception e) {
@@ -43,11 +53,13 @@ public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<Datag
         private final String ssrc;
         private final int rtpPort;
         private final int rtcpPort;
+        private final String stunUsername;
 
-        public RemoteConfiguration(String ssrc, int rtpPort, int rtcpPort) {
+        public RemoteConfiguration(String ssrc, int rtpPort, int rtcpPort, String stunUsername) {
             this.ssrc = ssrc;
             this.rtpPort = rtpPort;
             this.rtcpPort = rtcpPort;
+            this.stunUsername = stunUsername;
         }
 
         public String getSsrc() {
@@ -62,6 +74,10 @@ public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<Datag
             return rtcpPort;
         }
 
+        public String getStunUsername() {
+            return stunUsername;
+        }
+
         public static final RemoteConfiguration buildRemoteConfiguration(String configuration) throws InvalidRemoteConfigurationException{
             Matcher matcher = pattern.matcher(configuration);
             if(!matcher.matches()) {
@@ -70,7 +86,8 @@ public class ProxyRemoteControlHandler extends SimpleChannelInboundHandler<Datag
 
             return new RemoteConfiguration(matcher.group("ssrc"),
                     Integer.valueOf(matcher.group("rtpPort")),
-                    Integer.valueOf(matcher.group("rtcpPort")));
+                    Integer.valueOf(matcher.group("rtcpPort")),
+                    matcher.group("stunUsername"));
         }
 
 

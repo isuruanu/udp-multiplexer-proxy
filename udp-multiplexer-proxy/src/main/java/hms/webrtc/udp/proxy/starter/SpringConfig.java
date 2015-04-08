@@ -2,10 +2,8 @@ package hms.webrtc.udp.proxy.starter;
 
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-import hms.webrtc.udp.proxy.ProxyBackEndHandler;
-import hms.webrtc.udp.proxy.ProxyContext;
-import hms.webrtc.udp.proxy.ProxyContextCache;
-import hms.webrtc.udp.proxy.ProxyFrontEndHandler;
+import hms.webrtc.udp.proxy.*;
+import hms.webrtc.udp.proxy.remote.DtlsCache;
 import hms.webrtc.udp.proxy.remote.ProxyRemoteControlHandler;
 import hms.webrtc.udp.proxy.remote.RemoteControlCache;
 import hms.webrtc.udp.proxy.rtcp.RtcpKeyResolver;
@@ -86,7 +84,7 @@ public class SpringConfig {
 
     @Bean(name = "rtpFrontEndHandler")
     public ChannelHandler rtpFrontEndHandler() {
-        return new ProxyFrontEndHandler(rtpBackEndHandler(), rtpKeyResolver());
+        return new ProxyFrontEndHandler(rtpBackEndHandler(), rtpKeyResolver(), rtpStunKeyResolver());
     }
 
     @Bean(name = "rtpBackEndHandler")
@@ -96,12 +94,22 @@ public class SpringConfig {
 
     @Bean(name = "rtcpFrontEndHandler")
     public ChannelHandler rtcpFrontEndHandler() {
-        return new ProxyFrontEndHandler(rtcpBackEndHandler(), rtcpKeyResolver());
+        return new ProxyFrontEndHandler(rtcpBackEndHandler(), rtcpKeyResolver(), rtcpStunKeyResolver());
     }
 
     @Bean(name = "rtcpBackEndHandler")
     public ChannelHandler rtcpBackEndHandler() {
         return new ProxyBackEndHandler(rtcpKeyResolver());
+    }
+
+    @Bean(name = "rtcpStunKeyResolver")
+    public RtcpStunKeyResolver rtcpStunKeyResolver() {
+        return new RtcpStunKeyResolver();
+    }
+
+    @Bean(name = "rtpStunKeyResolver")
+    public RtpStunKeyResolver rtpStunKeyResolver() {
+        return new RtpStunKeyResolver();
     }
 
     @Bean(name = "proxyRemoteControlHandler")
@@ -146,6 +154,11 @@ public class SpringConfig {
     @Bean(name = "remoteControlCache")
     public RemoteControlCache remoteControlCache() {
         return new RemoteControlCache();
+    }
+
+    @Bean(name = "dtlsCache")
+    public DtlsCache dtlsCache() {
+        return new DtlsCache();
     }
 
     @Bean
